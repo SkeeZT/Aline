@@ -1,0 +1,90 @@
+[project]
+name = "aimaxifai"
+version = "0.1.0"
+description = "AI-powered exercise analysis system with FastAPI backend for real-time form evaluation and velocity-based training metrics"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "AI Trainer Team", email = "contact@aimaxifai.com"}
+]
+keywords = ["ai", "computer-vision", "exercise", "fitness", "pose-estimation", "fastapi", "yolo"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Healthcare Industry",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    # Core ML and Computer Vision
+    "numpy>=1.24.3",
+    "opencv-python>=4.8.1.78",
+    "torch>=2.7.1",
+    "torchvision>=0.22.1",
+    "ultralytics>=8.0.196",
+    "scipy>=1.11.4",
+    "pillow>=11.3.0",
+    # FastAPI and Web Framework
+    "fastapi>=0.104.1",
+    "uvicorn[standard]>=0.24.0",
+    "python-multipart>=0.0.6",
+    # Data Validation and Serialization
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    # File Handling and Configuration
+    "python-magic>=0.4.27",
+    "aiofiles>=23.2.1",
+    "pyyaml>=6.0.1",
+    # Audio Processing
+    "pygame>=2.5.2",
+    "pydub>=0.25.1",
+    "ffmpeg-python>=0.2.0",
+    # Logging and Progress
+    "loguru>=0.7.2",
+    "tqdm>=4.66.1",
+    # Background Tasks
+    "celery>=5.3.4",
+    "redis>=5.0.1",
+    # WebSocket Support
+    "websockets>=12.0",
+    # Development and Testing
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.21.1",
+    "httpx>=0.25.2",
+    "mediapipe>=0.10.31",
+    "pyinstaller>=6.17.0",
+    "lap>=0.5.12"
+]
+
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu126", marker = "platform_system == 'Windows'" },
+    { index = "pytorch-cu126", marker = "platform_system == 'Linux'" },
+]
+torchvision = [
+    { index = "pytorch-cu126", marker = "platform_system == 'Windows'" },
+    { index = "pytorch-cu126", marker = "platform_system == 'Linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true

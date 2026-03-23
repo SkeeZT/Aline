@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  ai-trainer-api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./assets:/app/assets:rw
+      - ./uploads:/app/uploads:rw
+      - ./logs:/app/logs:rw
+    environment:
+      - CONFIG_PATH=/app/config.yaml
+      - UPLOAD_DIR=/app/uploads
+      - OUTPUT_DIR=/app/assets/output
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=false
+      - MAX_FILE_SIZE=100
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Redis for background task queue
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:

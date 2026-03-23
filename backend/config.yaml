@@ -1,0 +1,623 @@
+# AI Trainer Configuration
+api:
+  title: "AI Trainer API"
+  version: "1.0.0"
+  description: "AI-powered exercise analysis API for squat, pullup, and pushup form evaluation"
+
+paths:
+  input_video: "./assets/videos/omar_videos/test1.mp4"
+  output_dir: "./assets/output"
+  model: "./assets/models/yolo11x-pose.pt"
+  segmentation_model: "./assets/models/yolo11s-seg.pt"
+  voice_messages: "./assets/voice_messages/Tone_B"
+  log_file: "./assets/logs/api.log"
+  config: "./config.yaml"
+  upload_dir: "./assets/uploads"
+
+security:
+  allow_origins:
+    - "*"
+  allow_methods:
+    - "*"
+  allow_headers:
+    - "*"
+
+# Pose Estimation Provider
+pose_estimation:
+  provider: "mediapipe" # Options: "mediapipe", "yolo"
+  mediapipe:
+    model_path: "./assets/models/pose_landmarker_heavy.task"
+    model_complexity: 1 # 0, 1, or 2 (1 is default, 2 is most accurate)
+    min_detection_confidence: 0.8
+    min_tracking_confidence: 0.8
+  yolo:
+    model_path: "./assets/models/yolo11x-pose.pt"
+
+# Display settings
+display:
+  width: 1280
+  show_window: true
+
+# Video processing settings
+video:
+  use_webcam: true
+  webcam_id: 0
+  rotation: 90          # Rotation in degrees (0, 90, 180, 270)
+  show_visualize: true  # Show real-time visualization
+
+# Dual Camera Configuration
+# When enabled, the application supports two cameras for comprehensive
+# form analysis: side view (primary) for ROM and depth, front view for
+# knee valgus, hip alignment, and arm symmetry detection.
+#
+# To enable dual camera mode:
+# 1. Set enabled: true below
+# 2. Configure side_camera and front_camera device IDs
+# 3. The frontend will show a "Dual Camera" toggle when this is enabled
+# 4. If enabled: false, the app uses single camera mode (backward compatible)
+dual_camera:
+  enabled: true  # Set to true to enable dual-camera mode in the UI
+  sync_method: "software"  # "software" (timestamps) or "gstreamer" (hardware/pipeline)
+  use_gstreamer: false  # Set to false if GStreamer is not installed/working lower latency
+  
+  # Side camera (captures depth, ROM, forward lean)
+  side_camera:
+    device_id: 0  # MX Brio (Index 0)
+    width: 1280
+    height: 720
+    fps: 30
+    calibration_file: "./assets/calibration/side_camera.npz"
+    # Physical placement
+    distance_from_subject_cm: 150  # Distance from subject
+    height_from_ground_cm: 90      # Camera height
+    angle_degrees: 0               # Tilt angle (negative = pointing down)
+    rotation: 180                  # Rotation in degrees (0, 90, 180, 270)
+
+  # Front camera (captures symmetry, knee valgus, weight shift)
+  front_camera:
+    device_id: 1  # HD Camera / Built-in (Index 1)
+    width: 1280
+    height: 720
+    fps: 30
+    calibration_file: "./assets/calibration/front_camera.npz"
+    # Physical placement
+    distance_from_subject_cm: 200
+    height_from_ground_cm: 90
+    angle_degrees: 0
+    rotation: 180
+  
+  # Synchronization settings
+  sync:
+    threshold_ms: 50  # Maximum acceptable time difference between frames
+    buffer_size: 3    # Frame buffer size for synchronization
+  
+  # Issue detection thresholds (front-view specific)
+  front_view_thresholds:
+    knee_valgus_warning: 10.0   # Degrees inward from expected position
+    knee_valgus_error: 15.0
+    shoulder_tilt_warning: 5.0  # Degrees from horizontal
+    shoulder_tilt_error: 10.0
+    hip_tilt_warning: 7.0
+    hip_tilt_error: 12.0
+    weight_balance_warning: 0.15  # Deviation from 0.5 (centered)
+    weight_balance_error: 0.25
+
+# Voice settings
+voice:
+  enabled: true  # Enable/disable voice messages
+  volume: 0.7    # Volume level (0.0 to 1.0)
+
+# Countdown settings
+countdown:
+  time: 5  # Countdown time in seconds
+
+side_difference:
+  confidence_threshold: 0.5 
+
+# Segmentation settings
+segmentation:
+  enabled: true
+  overlay_alpha: 0.3
+  contour_color: [0, 255, 0]  # Green (B, G, R)
+  contour_thickness: 2
+
+# Exercise-Specific Settings
+
+# Global experience level (applies to all exercises if not overridden)
+experience:
+  level: beginner  # beginner | intermediate | advanced
+
+# -----------------------------------------------------------------------------
+# SQUAT Exercise Configuration
+# -----------------------------------------------------------------------------
+squat:
+  min_rep_duration: 0.2
+  thresholds:
+    beginner:
+      # Angle thresholds
+      knee_min: 85.0              # Target angle at bottom (deeper = lower)
+      knee_max: 175.0             # Expected angle when standing
+      hip_min: 140.0              # Min hip angle (below = forward lean)
+      hip_max: 200.0              # Max hip angle (above = hyperextension)
+      # Rep validation
+      attempt_threshold: 0.5      # Min ROM % to count as attempt
+      success_threshold: 0.7      # Min ROM % for successful rep
+      very_shallow_threshold: 0.5
+      moderate_shallow_threshold: 0.6
+      # Form checks
+      knees_over_toes_tolerance: 50  # Pixels tolerance
+      relative_angle_difference: 35.0  # Knee-hip angle diff for forward lean
+      back_curvature_threshold: 1.5
+    intermediate:
+      knee_min: 80.0
+      knee_max: 175.0
+      hip_min: 145.0
+      hip_max: 195.0
+      attempt_threshold: 0.5
+      success_threshold: 0.7
+      very_shallow_threshold: 0.5
+      moderate_shallow_threshold: 0.6
+      knees_over_toes_tolerance: 50
+      relative_angle_difference: 25.0
+      back_curvature_threshold: 1.5
+    advanced:
+      knee_min: 75.0
+      knee_max: 178.0
+      hip_min: 150.0
+      hip_max: 190.0
+      attempt_threshold: 0.5
+      success_threshold: 0.7
+      very_shallow_threshold: 0.5
+      moderate_shallow_threshold: 0.6
+      knees_over_toes_tolerance: 50
+      relative_angle_difference: 20.0
+      back_curvature_threshold: 1.2
+
+# -----------------------------------------------------------------------------
+# PULLUP Exercise Configuration
+# -----------------------------------------------------------------------------
+pullup:
+  min_rep_duration: 1.0
+  thresholds:
+    beginner:
+      # Angle thresholds
+      elbow_min: 70.0             # Top position (bent arms, chin above bar)
+      elbow_max: 165.0            # Hanging position (extended arms)
+      # Rep validation
+      attempt_threshold: 0.30     # Min ROM % to count as attempt
+      success_threshold: 0.60    # Min ROM % for successful rep
+      # Form checks
+      kipping_threshold: 40.0     # Max hip Y-position variance (pixels)
+      forearm_vertical_tolerance: 15.0
+      torso_incline_min: 10.0
+      torso_incline_max: 50.0
+      hip_x_oscillation_max: 8.0
+      neck_shoulder_min: 80.0
+      eccentric_velocity_max: 5.0
+    intermediate:
+      elbow_min: 60.0
+      elbow_max: 170.0
+      attempt_threshold: 0.35
+      success_threshold: 0.70
+      kipping_threshold: 30.0
+      forearm_vertical_tolerance: 12.0
+      torso_incline_min: 15.0
+      torso_incline_max: 45.0
+      hip_x_oscillation_max: 6.0
+      neck_shoulder_min: 85.0
+      eccentric_velocity_max: 4.0
+    advanced:
+      elbow_min: 50.0
+      elbow_max: 175.0
+      attempt_threshold: 0.40
+      success_threshold: 0.80
+      kipping_threshold: 20.0
+      forearm_vertical_tolerance: 10.0
+      torso_incline_min: 20.0
+      torso_incline_max: 40.0
+      hip_x_oscillation_max: 4.0
+      neck_shoulder_min: 90.0
+      eccentric_velocity_max: 3.0
+
+# -----------------------------------------------------------------------------
+# BENCH PRESS Exercise Configuration
+# -----------------------------------------------------------------------------
+bench_press:
+  min_rep_duration: 1.0
+  thresholds:
+    beginner:
+      shoulder_elbow_wrist_min: 80.0
+      shoulder_elbow_wrist_max: 165.0
+      forearm_vertical_tolerance: 15.0
+      head_neck_horizontal_max: 15.0
+      eccentric_velocity_max: 1.2
+      attempt_threshold: 0.30
+      success_threshold: 0.60
+    intermediate:
+      shoulder_elbow_wrist_min: 85.0
+      shoulder_elbow_wrist_max: 170.0
+      forearm_vertical_tolerance: 10.0
+      head_neck_horizontal_max: 10.0
+      eccentric_velocity_max: 1.0
+      attempt_threshold: 0.35
+      success_threshold: 0.70
+    advanced:
+      shoulder_elbow_wrist_min: 90.0
+      shoulder_elbow_wrist_max: 175.0
+      forearm_vertical_tolerance: 5.0
+      head_neck_horizontal_max: 5.0
+      eccentric_velocity_max: 0.8
+      attempt_threshold: 0.40
+      success_threshold: 0.80
+
+# -----------------------------------------------------------------------------
+# PUSHUP Exercise Configuration
+# -----------------------------------------------------------------------------
+pushup:
+  min_rep_duration: 0.8
+  thresholds:
+    beginner:
+      # Angle thresholds
+      elbow_min: 100.0            # Bottom position (chest near floor)
+      elbow_max: 165.0            # Plank position (extended arms)
+      # Body alignment (shoulder -> hip -> ankle angle)
+      body_angle_min: 160.0       # Acceptable body alignment min
+      body_angle_max: 200.0       # Acceptable body alignment max
+      hip_sag_threshold: 155.0    # Below this = hip sag (core not engaged)
+      hip_pike_threshold: 210.0   # Above this = hip pike (hips too high)
+      # Rep validation
+      attempt_threshold: 0.30
+      success_threshold: 0.60
+    intermediate:
+      elbow_min: 90.0
+      elbow_max: 170.0
+      body_angle_min: 165.0
+      body_angle_max: 195.0
+      hip_sag_threshold: 160.0
+      hip_pike_threshold: 200.0
+      attempt_threshold: 0.35
+      success_threshold: 0.70
+    advanced:
+      elbow_min: 80.0
+      elbow_max: 175.0
+      body_angle_min: 170.0
+      body_angle_max: 190.0
+      hip_sag_threshold: 165.0
+      hip_pike_threshold: 195.0
+      attempt_threshold: 0.40
+      success_threshold: 0.80
+
+# -----------------------------------------------------------------------------
+# DIPS Exercise Configuration
+# -----------------------------------------------------------------------------
+dips:
+  min_rep_duration: 1.0
+  thresholds:
+    beginner:
+      # Angle thresholds
+      elbow_min: 100.0            # Bottom position (more forgiving)
+      elbow_max: 165.0            # Top position (arms extended)
+      # Rep validation
+      attempt_threshold: 0.30
+      success_threshold: 0.60
+      # Form checks
+      shoulder_shrug_threshold: 40.0  # Max shoulder rise in pixels
+    intermediate:
+      elbow_min: 90.0
+      elbow_max: 170.0
+      attempt_threshold: 0.35
+      success_threshold: 0.70
+      shoulder_shrug_threshold: 30.0
+    advanced:
+      elbow_min: 80.0             # Deep dip (elbow at 90° or lower)
+      elbow_max: 175.0
+      attempt_threshold: 0.40
+      success_threshold: 0.80
+      shoulder_shrug_threshold: 20.0
+
+# -----------------------------------------------------------------------------
+# LUNGES Exercise Configuration
+# -----------------------------------------------------------------------------
+lunges:
+  min_rep_duration: 1.0
+  thresholds:
+    beginner:
+      # Front leg angle thresholds
+      front_knee_min: 100.0       # Bottom position (more forgiving)
+      front_knee_max: 170.0       # Standing position
+      # Back leg threshold
+      back_knee_max: 130.0        # Back knee should be bent (lower = deeper)
+      # Torso alignment
+      torso_angle_min: 155.0      # Min torso angle (below = forward lean)
+      # Form checks
+      knee_over_toes_tolerance: 40.0  # Pixels tolerance
+      # Rep validation
+      attempt_threshold: 0.30
+      success_threshold: 0.60
+    intermediate:
+      front_knee_min: 90.0
+      front_knee_max: 170.0
+      back_knee_max: 120.0
+      torso_angle_min: 160.0
+      knee_over_toes_tolerance: 30.0
+      attempt_threshold: 0.35
+      success_threshold: 0.70
+    advanced:
+      front_knee_min: 85.0        # Deep lunge
+      front_knee_max: 175.0
+      back_knee_max: 110.0        # Back knee nearly touching floor
+      torso_angle_min: 165.0
+      knee_over_toes_tolerance: 20.0
+      attempt_threshold: 0.40
+      success_threshold: 0.80
+
+# PLANK Exercise Configuration (Isometric/Time-Based)
+# -----------------------------------------------------------------------------
+plank:
+  thresholds:
+    beginner:
+      # Body angle thresholds (ideal = 180 degrees = straight line)
+      body_angle_min: 165.0       # Below = hip sag (more forgiving)
+      body_angle_max: 195.0       # Above = hip pike (more forgiving)
+      warning_angle_min: 160.0    # Warning threshold for sag
+      warning_angle_max: 200.0    # Warning threshold for pike
+      # Head position thresholds (pixels from ideal line)
+      head_drop_threshold: 30.0   # Pixels below ideal (more forgiving)
+      head_up_threshold: 30.0     # Pixels above ideal
+      # Minimum hold time to count as valid plank
+      min_hold_time: 2.0
+    intermediate:
+      body_angle_min: 170.0
+      body_angle_max: 190.0
+      warning_angle_min: 165.0
+      warning_angle_max: 195.0
+      head_drop_threshold: 25.0
+      head_up_threshold: 25.0
+      min_hold_time: 2.0
+    advanced:
+      body_angle_min: 175.0       # Strict alignment required
+      body_angle_max: 185.0
+      warning_angle_min: 170.0
+      warning_angle_max: 190.0
+      head_drop_threshold: 20.0
+      head_up_threshold: 20.0
+      min_hold_time: 2.0
+
+# DEADLIFT Exercise Configuration
+# -----------------------------------------------------------------------------
+deadlift:
+  min_rep_duration: 1.5
+  thresholds:
+    beginner:
+      # Hip angle thresholds (Standard: 60-80 setup, 180 top)
+      hip_standing: 170.0         # Lockout (more forgiving)
+      hip_bottom: 85.0            # Bottom position hinge
+      # Knee angle thresholds (Standard: 100-120 setup, 180 top)
+      knee_standing: 170.0
+      knee_bottom: 125.0
+      # Torso angle (Standard: 25-40 setup)
+      torso_angle_min: 20.0       # Angle above horizontal
+      torso_angle_max: 45.0
+      # Shin angle (Standard: 5-15 forward from vertical)
+      shin_angle_min: 0.0         # 0 is vertical, positive is forward
+      shin_angle_max: 20.0
+      # Bar tracking / Form
+      bar_drift_max: 5.0          # Max horizontal drift (normalized to leg length %)
+      sync_rise_tolerance: 10.0   # Difference in hip vs shoulder rise angle per frame
+      # Back curvature thresholds (from segmentation)
+      back_curvature_warning: 0.18
+      back_curvature_threshold: 0.25
+      # Rep validation
+      attempt_threshold: 0.30
+      success_threshold: 0.60
+    intermediate:
+      hip_standing: 175.0
+      hip_bottom: 80.0
+      knee_standing: 175.0
+      knee_bottom: 120.0
+      torso_angle_min: 25.0
+      torso_angle_max: 40.0
+      shin_angle_min: 5.0
+      shin_angle_max: 15.0
+      bar_drift_max: 4.0
+      sync_rise_tolerance: 7.0
+      back_curvature_warning: 0.15
+      back_curvature_threshold: 0.20
+      attempt_threshold: 0.35
+      success_threshold: 0.70
+    advanced:
+      hip_standing: 180.0         # Full extension required
+      hip_bottom: 70.0            # Strict proper hinge required
+      knee_standing: 180.0
+      knee_bottom: 110.0
+      torso_angle_min: 25.0
+      torso_angle_max: 40.0
+      shin_angle_min: 5.0
+      shin_angle_max: 15.0
+      bar_drift_max: 3.0
+      sync_rise_tolerance: 5.0
+      back_curvature_warning: 0.10
+      back_curvature_threshold: 0.15
+      attempt_threshold: 0.40
+      success_threshold: 0.80
+
+# OVERHEAD PRESS Exercise Configuration
+# -----------------------------------------------------------------------------
+overhead_press:
+  min_rep_duration: 1.0
+  thresholds:
+    beginner:
+      # Elbow angle thresholds
+      elbow_down: 90.0            # Starting position at shoulders
+      elbow_up: 165.0             # Lockout position (more forgiving)
+      # Shoulder angle (arm relative to torso)
+      shoulder_min: 140.0         # Min shoulder elevation
+      # Form checks
+      back_arch_threshold: 20.0   # Max back arch (pixels tolerance)
+      # Rep validation
+      attempt_threshold: 0.30
+      success_threshold: 0.60
+    intermediate:
+      elbow_down: 90.0
+      elbow_up: 170.0
+      shoulder_min: 150.0
+      back_arch_threshold: 15.0
+      attempt_threshold: 0.35
+      success_threshold: 0.70
+    advanced:
+      elbow_down: 85.0
+      elbow_up: 175.0             # Full lockout required
+      shoulder_min: 160.0
+      back_arch_threshold: 10.0   # Strict core engagement
+      attempt_threshold: 0.40
+      success_threshold: 0.80
+
+# BENT-OVER ROW Exercise Configuration
+# -----------------------------------------------------------------------------
+bent_over_row:
+  min_rep_duration: 1.0
+  thresholds:
+    beginner:
+      # Elbow angle thresholds
+      elbow_extended: 155.0       # Arms extended (more forgiving)
+      elbow_contracted: 70.0      # Full contraction (less strict)
+      # Hip hinge position
+      hip_angle_min: 60.0         # Min hip angle (more upright allowed)
+      hip_angle_max: 130.0        # Max hip angle
+      # Back curvature (uses segmentation)
+      back_curvature_warning: 0.18
+      back_curvature_threshold: 0.25
+      hip_rise_threshold: 20.0    # Max hip rise during row (pixels)
+      # Rep validation
+      attempt_threshold: 0.30
+      success_threshold: 0.60
+    intermediate:
+      elbow_extended: 160.0
+      elbow_contracted: 60.0
+      hip_angle_min: 70.0
+      hip_angle_max: 120.0
+      back_curvature_warning: 0.15
+      back_curvature_threshold: 0.20
+      hip_rise_threshold: 15.0
+      attempt_threshold: 0.35
+      success_threshold: 0.70
+    advanced:
+      elbow_extended: 165.0
+      elbow_contracted: 50.0      # Deep contraction required
+      hip_angle_min: 75.0
+      hip_angle_max: 110.0        # Strict hip hinge
+      back_curvature_warning: 0.10
+      back_curvature_threshold: 0.15
+      hip_rise_threshold: 10.0
+      attempt_threshold: 0.40
+      success_threshold: 0.80
+
+# GLUTE BRIDGE Exercise Configuration
+# -----------------------------------------------------------------------------
+glute_bridge:
+  min_rep_duration: 1.0
+  thresholds:
+    beginner:
+      # Hip angle thresholds (floor = ~90, top = ~180)
+      hip_angle_down: 85.0        # Starting position
+      hip_angle_up: 160.0         # Top position (more forgiving)
+      # Knee angle range
+      knee_angle_min: 75.0
+      knee_angle_max: 105.0
+      # Form checks
+      hyperextension_threshold: 190.0  # Above = over-arching
+      # Rep validation
+      attempt_threshold: 0.30
+      success_threshold: 0.60
+    intermediate:
+      hip_angle_down: 90.0
+      hip_angle_up: 170.0
+      knee_angle_min: 80.0
+      knee_angle_max: 100.0
+      hyperextension_threshold: 185.0
+      attempt_threshold: 0.35
+      success_threshold: 0.70
+    advanced:
+      hip_angle_down: 90.0
+      hip_angle_up: 175.0         # Near-full extension
+      knee_angle_min: 85.0
+      knee_angle_max: 95.0        # Strict knee position
+      hyperextension_threshold: 180.0  # No hyperextension allowed
+      attempt_threshold: 0.40
+      success_threshold: 0.80
+
+# WALL SIT Exercise Configuration (Isometric/Time-Based)
+# -----------------------------------------------------------------------------
+wall_sit:
+  thresholds:
+    beginner:
+      # Knee angle thresholds (ideal = 90 degrees)
+      knee_angle_min: 80.0        # Below = too bent
+      knee_angle_max: 100.0       # Above = too extended
+      # Hip angle thresholds (ideal = 90 degrees)
+      hip_angle_min: 80.0
+      hip_angle_max: 100.0
+      # Warning tolerance (degrees)
+      warning_tolerance: 15.0     # More forgiving
+      # Minimum hold time
+      min_hold_time: 2.0
+    intermediate:
+      knee_angle_min: 85.0
+      knee_angle_max: 95.0
+      hip_angle_min: 85.0
+      hip_angle_max: 95.0
+      warning_tolerance: 10.0
+      min_hold_time: 2.0
+    advanced:
+      knee_angle_min: 88.0        # Very strict 90-degree angle
+      knee_angle_max: 92.0
+      hip_angle_min: 88.0
+      hip_angle_max: 92.0
+      warning_tolerance: 5.0      # Very strict
+      min_hold_time: 2.0
+
+# Keypoint Indices
+
+# YOLO11 pose keypoint indices (0-indexed)
+keypoints:
+  nose: 0
+  left_eye: 1
+  right_eye: 2
+  left_ear: 3
+  right_ear: 4
+  left_shoulder: 5
+  right_shoulder: 6
+  left_elbow: 7
+  right_elbow: 8
+  left_wrist: 9
+  right_wrist: 10
+  left_hip: 11
+  right_hip: 12
+  left_knee: 13
+  right_knee: 14
+  left_ankle: 15
+  right_ankle: 16
+
+# MediaPipe pose keypoint indices (0-indexed)
+mediapipe_keypoints:
+  left_hip: 23
+  right_hip: 24
+  left_knee: 25
+  right_knee: 26
+  left_heel: 29
+  right_heel: 30
+  left_foot_index: 31
+  right_foot_index: 32
+
+# Visualization Settings
+visualization:
+  font_scale: 0.5
+  thickness: 2
+  show_failure_justifications: true
+  colors:
+    knee_line: [0, 255, 255]      # Cyan for knee angle
+    hip_line: [255, 0, 255]       # Magenta for hip angle
+    elbow_line: [50, 205, 50]     # Lime green for elbow angle
+    body_line: [255, 215, 0]      # Gold for body alignment
+    keypoints: [255, 255, 0]      # Yellow for keypoints
+    text: [255, 255, 255]         # White for text
